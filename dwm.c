@@ -220,6 +220,8 @@ static void grid(Monitor *);
 static void tile(Monitor *);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
+static void toggleperedit(const Arg *arg);
+static void toggleperterm(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void unfocus(Client *c, int setfocus);
@@ -293,6 +295,9 @@ struct Pertag {
 	const Layout *ltidxs[LENGTH(tags) + 1][2]; /* matrix of tags and layouts indexes  */
 	int showbars[LENGTH(tags) + 1]; /* display bar for the current tag */
 };
+
+static unsigned int peredittag = 1 << (LENGTH(tags) + 1);
+static unsigned int pertermtag = 1 << LENGTH(tags);
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
@@ -1125,6 +1130,20 @@ manage(Window w, XWindowAttributes *wa)
 	if(c->iscentered) {
 		c->x = (c->mon->mw - WIDTH(c)) / 2;
 		c->y = (c->mon->mh - HEIGHT(c)) / 2;
+	}
+
+	if (!strcmp(c->name, pereditname)) {
+		c->mon->tagset[c->mon->seltags] |= c->tags = peredittag;
+		c->isfloating = True;
+		c->x = c->mon->wx + (c->mon->ww / 2 - WIDTH(c) / 2);
+		c->y = c->mon->wy + (c->mon->wh / 2 - HEIGHT(c) / 2);
+	}
+
+	if (!strcmp(c->name, pertermname)) {
+		c->mon->tagset[c->mon->seltags] |= c->tags = pertermtag;
+		c->isfloating = True;
+		c->x = c->mon->wx + (c->mon->ww / 2 - WIDTH(c) / 2);
+		c->y = c->mon->wy + (c->mon->wh / 2 - HEIGHT(c) / 2);
 	}
 
 	wc.border_width = c->bw;
@@ -2009,6 +2028,70 @@ togglefloating(const Arg *arg)
 	arrange(selmon);
 }
 
+
+void
+togglepersistent(const Arg* arg, unsigned int pertag) {
+  Client *c;
+  unsigned int found = 0;
+  for (c = selmon->clients; c && !(found = c->tags & pertag); c = c->next);
+  if (found) {
+    unsigned int newtagset = selmon->tagset[selmon->seltags] ^ pertag;
+    if (newtagset) {
+      selmon->tagset[selmon->seltags] = newtagset;
+      focus(NULL);
+      arrange(selmon);
+    }
+    if (ISVISIBLE(c)) {
+      focus(c);
+      restack(selmon);
+    }
+  } else
+    spawn(arg);
+}
+
+void
+toggleperedit(const Arg *arg) {
+  //Arg arg2 = { .ui = peredittag, .v = arg -> v};
+  togglepersistent(arg, peredittag);
+  	/* Client *c; */
+  	/* unsigned int found = 0; */
+    /* 	for (c = selmon->clients; c && !(found = c->tags & peredittag); c = c->next); */
+  	/* if (found) { */
+    /* 		unsigned int newtagset = selmon->tagset[selmon->seltags] ^ peredittag; */
+    /* 		if (newtagset) { */
+    /*   			selmon->tagset[selmon->seltags] = newtagset; */
+    /*   			focus(NULL); */
+    /*   			arrange(selmon); */
+    /*   		} */
+    /* 		if (ISVISIBLE(c)) { */
+    /*   			focus(c); */
+    /*   			restack(selmon); */
+    /*   		} */
+    /* 	} else */
+    /* 		spawn(arg); */
+}
+
+void
+toggleperterm(const Arg *arg) {
+  togglepersistent(arg, pertermtag);
+  /* Client *c; */
+  /* unsigned int found = 0; */
+  /* for (c = selmon->clients; c && !(found = c->tags & pertermtag); c = c->next); */
+  /* if (found) { */
+  /*   unsigned int newtagset = selmon->tagset[selmon->seltags] ^ pertermtag; */
+  /*   if (newtagset) { */
+  /*     selmon->tagset[selmon->seltags] = newtagset; */
+  /*     focus(NULL); */
+  /*     arrange(selmon); */
+  /*   } */
+  /*   if (ISVISIBLE(c)) { */
+  /*     focus(c); */
+  /*     restack(selmon); */
+  /*   } */
+  /* } else */
+  /*   spawn(arg); */
+}
+
 void
 toggletag(const Arg *arg)
 {
@@ -2482,6 +2565,7 @@ main(int argc, char *argv[])
 		die("pledge");
 #endif /* __OpenBSD__ */
 	scan();
+  system("setxkbmap -option ctrl:swapcaps");
 	run();
 	if(restart) execvp(argv[0], argv);
 	cleanup();

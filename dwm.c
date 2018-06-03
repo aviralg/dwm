@@ -284,6 +284,9 @@ static Drw *drw;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
+#define peredittag (1 << (LENGTH(tags) + 1))
+#define pertermtag (1 << LENGTH(tags))
+
 /* configuration, allows nested code to access above variables */
 #include "config.h"
 
@@ -295,9 +298,6 @@ struct Pertag {
 	const Layout *ltidxs[LENGTH(tags) + 1][2]; /* matrix of tags and layouts indexes  */
 	int showbars[LENGTH(tags) + 1]; /* display bar for the current tag */
 };
-
-static unsigned int peredittag = 1 << (LENGTH(tags) + 1);
-static unsigned int pertermtag = 1 << LENGTH(tags);
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
@@ -1127,26 +1127,27 @@ manage(Window w, XWindowAttributes *wa)
 		&& (c->x + (c->w / 2) < c->mon->wx + c->mon->ww)) ? bh : c->mon->my);
 	c->bw = borderpx;
 
-	if(c->iscentered) {
-		c->x = (c->mon->mw - WIDTH(c)) / 2;
-		c->y = (c->mon->mh - HEIGHT(c)) / 2;
-	}
-
 	if (!strcmp(c->name, pereditname)) {
 		c->mon->tagset[c->mon->seltags] |= c->tags = peredittag;
-		c->isfloating = True;
-		c->x = c->mon->wx + (c->mon->ww / 2 - WIDTH(c) / 2);
-		c->y = c->mon->wy + (c->mon->wh / 2 - HEIGHT(c) / 2);
+		c->iscentered = True;
+		//c->x = c->mon->wx + (c->mon->ww / 2 - WIDTH(c) / 2);
+		//c->y = c->mon->wy + (c->mon->wh / 2 - HEIGHT(c) / 2);
 	}
 
 	if (!strcmp(c->name, pertermname)) {
 		c->mon->tagset[c->mon->seltags] |= c->tags = pertermtag;
 		c->isfloating = True;
-		c->x = c->mon->wx + (c->mon->ww / 2 - WIDTH(c) / 2);
-		c->y = c->mon->wy + (c->mon->wh / 2 - HEIGHT(c) / 2);
+    c->iscentered = True;
+		//c->x = c->mon->wx + (c->mon->ww / 2 - WIDTH(c) / 2);
+		//c->y = c->mon->wy + (c->mon->wh / 2 - HEIGHT(c) / 2);
 	}
 
-	wc.border_width = c->bw;
+  if(c->iscentered) {
+		c->x = (c->mon->mw - WIDTH(c)) / 2;
+		c->y = (c->mon->mh - HEIGHT(c)) / 2;
+	}
+
+  wc.border_width = c->bw;
 	XConfigureWindow(dpy, w, CWBorderWidth, &wc);
 	XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBorder].pixel);
 	configure(c); /* propagates border_width, if size doesn't change */
